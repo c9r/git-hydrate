@@ -1,0 +1,47 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+      - uses: Swatinem/rust-cache@v2
+      - name: Start MinIO
+        if: runner.os == 'Linux'
+        run: |
+          docker run -d --name minio -p 9000:9000 \
+            -e MINIO_ROOT_USER=hydrate -e MINIO_ROOT_PASSWORD=hydrate-secret \
+            quay.io/minio/minio server /data
+          for i in $(seq 1 60); do
+            if curl -sf -o /dev/null http://127.0.0.1:9000/minio/health/live; then break; fi
+            sleep 1
+          done
+          pip install --quiet awscli
+          AWS_ACCESS_KEY_ID=hydrate AWS_SECRET_ACCESS_KEY=hydrate-secret \
+            aws --region us-east-1 --endpoint-url http://127.0.0.1:9000 s3 mb s3://hydrate-test
+          {
+            echo "GIT_HYDRATE_TEST_S3_REMOTE=s3://hydrate-test/objects"
+            echo "GIT_HYDRATE_TEST_S3_ENDPOINT=http://127.0.0.1:9000"
+            echo "GIT_HYDRATE_TEST_S3_REGION=us-east-1"
+            echo "AWS_ACCESS_KEY_ID=hydrate"
+            echo "AWS_SECRET_ACCESS_KEY=hydrate-secret"
+            echo "AWS_EC2_METADATA_DISABLED=true"
+          } >> "$GITHUB_ENV"
+      - run: cargo fmt --check
+      - run: cargo clippy --all-targets -- -D warnings
+      - run: cargo test
