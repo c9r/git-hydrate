@@ -42,9 +42,9 @@ exec git-hydrate {name} \"$@\"
 pub enum HookOutcome {
     Installed,
     Present,
-    /// Another hook occupies the file, and it was left alone.
+    /// Another hook occupies the file, which was left alone.
     Foreign,
-    /// `core.hooksPath` sends hooks elsewhere, and nothing was written.
+    /// `core.hooksPath` sends hooks elsewhere, so nothing was written.
     Redirected,
 }
 

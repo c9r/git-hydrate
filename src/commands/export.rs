@@ -1,9 +1,9 @@
 //! `git hydrate export`, which writes a tree into a plain directory, hydrated.
 //!
 //! The directory is not a repository. It records the commit it holds in a
-//! marker file, and running the export again against a newer commit changes
-//! only what the commit changed. Every pass walks the whole tree and makes
-//! each path right, so an interrupted export is finished by running it again.
+//! marker file. Running the export again against a newer commit changes only
+//! what the commit changed. Every pass walks the whole tree and makes each
+//! path right, so an interrupted export is finished by running it again.
 
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};

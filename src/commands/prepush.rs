@@ -1,10 +1,10 @@
 //! `git hydrate pre-push`, the hook that verifies objects before commits leave.
 //!
 //! Git hands the hook the refs being pushed on standard input. The hook finds
-//! every pointer in the commits the remote does not have, uploads each object
-//! the remote lacks from the working tree, which happens only for commits made
-//! without the pre-commit hook, and aborts the push naming any object it
-//! could find nowhere.
+//! every pointer in the commits the remote does not have and uploads each
+//! object the remote lacks from the working tree, which only a commit made
+//! without the pre-commit hook leaves behind. It aborts the push naming any
+//! object it can find nowhere.
 
 use std::collections::{HashMap, HashSet};
 use std::io::Read;

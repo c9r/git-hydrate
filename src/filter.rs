@@ -83,7 +83,7 @@ fn value_of<'a>(list: &'a [String], key: &str) -> Option<&'a str> {
 ///
 /// The first kilobyte is held back until the content is known to be longer
 /// than a pointer, because content that short and shaped like a pointer is
-/// one, and passes through unchanged.
+/// one and passes through unchanged.
 fn clean<R: Read, W: Write>(reader: &mut R, writer: &mut W, buf: &mut Vec<u8>) -> Result<()> {
     let mut head: Vec<u8> = Vec::with_capacity(MAX_LEN);
     let mut hasher = Hasher::new();
