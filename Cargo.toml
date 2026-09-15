@@ -1,0 +1,38 @@
+[package]
+name = "git-hydrate"
+version = "0.1.0"
+edition = "2024"
+description = "Large files in an object store, pointers in git, one copy on disk"
+license = "MIT"
+repository = "https://github.com/c9r/git-hydrate"
+readme = "README.md"
+keywords = ["git", "lfs", "large-files", "s3"]
+categories = ["command-line-utilities", "development-tools"]
+
+[dependencies]
+anyhow = "1.0.104"
+aws-config = { version = "1.12.0", features = ["behavior-version-latest"] }
+aws-sdk-s3 = "1.146.1"
+aws-smithy-types = "1.6.3"
+bytes = "1.12.1"
+clap = { version = "4.6.7", features = ["derive"] }
+futures = "0.3.34"
+globset = "0.4.20"
+hex = "0.4.3"
+indicatif = "0.18.6"
+sha2 = "0.11.0"
+tempfile = "3.27.0"
+tokio = { version = "1.53.1", features = ["rt-multi-thread", "macros", "fs", "io-util", "io-std", "sync", "process", "time"] }
+
+[[bin]]
+name = "git-hydrate"
+path = "src/main.rs"
+
+[[bin]]
+name = "git-dehydrate"
+path = "src/bin/git-dehydrate.rs"
+
+[profile.release]
+lto = true
+codegen-units = 1
+strip = true
