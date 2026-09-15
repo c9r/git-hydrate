@@ -57,6 +57,12 @@ pub async fn run(repo: &Repo, options: Options) -> Result<()> {
     if let Some(previous) = &previous
         && previous != &record
     {
+        if repo.resolve(&format!("{previous}^{{tree}}"))?.is_none() {
+            bail!(
+                "{} records {previous}, which this repository no longer has, so the paths it dropped cannot be found; remove the marker to export without pruning them",
+                marker.display()
+            );
+        }
         for path in repo.deleted_between(previous, &record)? {
             let target = dir.join(&path);
             match std::fs::remove_file(&target) {
