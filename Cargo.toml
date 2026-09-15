@@ -1,10 +1,11 @@
 [package]
 name = "git-hydrate"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2024"
 description = "Large files in an object store, pointers in git, one copy on disk"
 license = "MIT"
 repository = "https://github.com/c9r/git-hydrate"
+homepage = "https://github.com/c9r/git-hydrate"
 readme = "README.md"
 keywords = ["git", "lfs", "large-files", "s3"]
 categories = ["command-line-utilities", "development-tools"]

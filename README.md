@@ -40,7 +40,13 @@ Each release ships binaries for macOS, Linux, and Windows with an installer scri
 curl --proto '=https' --tlsv1.2 -LsSf https://github.com/c9r/git-hydrate/releases/latest/download/git-hydrate-installer.sh | sh
 ```
 
-On Windows, the same release carries `git-hydrate-installer.ps1`. Or build from source with Cargo:
+On Windows, the same release carries `git-hydrate-installer.ps1`. On macOS and Linux there is also a Homebrew tap:
+
+```sh
+brew install c9r/tap/git-hydrate
+```
+
+Or build from source with Cargo:
 
 ```sh
 cargo install --git https://github.com/c9r/git-hydrate
