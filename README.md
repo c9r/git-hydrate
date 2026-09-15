@@ -34,7 +34,13 @@ Everything that decides what is modified, what is clean, and what a checkout may
 
 ## Install
 
-Build from source with Cargo, or download a release binary and put it on your `PATH`:
+Each release ships binaries for macOS, Linux, and Windows with an installer script that picks the right one and puts it on your `PATH`:
+
+```sh
+curl --proto '=https' --tlsv1.2 -LsSf https://github.com/c9r/git-hydrate/releases/latest/download/git-hydrate-installer.sh | sh
+```
+
+On Windows, the same release carries `git-hydrate-installer.ps1`. Or build from source with Cargo:
 
 ```sh
 cargo install --git https://github.com/c9r/git-hydrate

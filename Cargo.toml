@@ -36,3 +36,6 @@ path = "src/bin/git-dehydrate.rs"
 lto = true
 codegen-units = 1
 strip = true
+
+[profile.dist]
+inherits = "release"
