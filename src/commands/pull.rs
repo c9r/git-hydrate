@@ -22,6 +22,9 @@ pub async fn run(repo: &Repo, cwd: &Path, options: Options) -> Result<()> {
     if !options.all && options.pathspecs.is_empty() {
         bail!("name the paths to hydrate, or pass --all");
     }
+    if options.all && !options.pathspecs.is_empty() {
+        bail!("--all hydrates every tracked file, so it takes no paths");
+    }
     let (settings, _) = config::resolve(repo)?;
     let files = if options.all {
         tracked_pointers(repo, &repo.toplevel, &[])?

@@ -25,6 +25,9 @@ pub async fn run(repo: &Repo, cwd: &Path, options: Options) -> Result<()> {
     if !options.all && options.pathspecs.is_empty() {
         bail!("name the paths to dehydrate, or pass --all");
     }
+    if options.all && !options.pathspecs.is_empty() {
+        bail!("--all dehydrates every tracked file, so it takes no paths");
+    }
     let (settings, _) = config::resolve(repo)?;
     let files = if options.all {
         tracked_pointers(repo, &repo.toplevel, &[])?
