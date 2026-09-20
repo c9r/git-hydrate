@@ -326,6 +326,48 @@ fn the_push_hook_uploads_what_a_hookless_commit_left_and_refuses_ghosts() {
 }
 
 #[test]
+fn the_push_hook_walks_from_the_tracking_refs_when_the_remote_tip_is_unknown() {
+    let sb = Sandbox::new();
+    let a = content(21, 1 << 16);
+    sb.write(&sb.work, "data/a.bin", &a);
+    sb.git(&sb.work, &["add", "."]);
+    sb.git(&sb.work, &["commit", "-q", "-m", "add a"]);
+    sb.git(&sb.work, &["push", "-q", "origin", "main"]);
+    let other = sb.clone("other");
+
+    let b = content(22, 1 << 16);
+    sb.write(&sb.work, "data/b.bin", &b);
+    sb.git(&sb.work, &["add", "."]);
+    sb.git(&sb.work, &["commit", "-q", "-m", "add b"]);
+    sb.git(&sb.work, &["push", "-q", "origin", "main"]);
+    let origin_tip = sb.git(&sb.origin, &["rev-parse", "refs/heads/main"]).trim().to_string();
+    assert!(
+        !sb.command("git", &other, &["cat-file", "-e", &origin_tip]).status.success(),
+        "the other clone never fetched the remote's tip"
+    );
+
+    let c = content(23, 1 << 16);
+    let c_pointer = pointer_for(&c);
+    sb.write(&other, "data/c.bin", &c);
+    let ghost = Pointer { oid: "8".repeat(64), size: 42 };
+    sb.write(&other, "data/ghost.bin", &ghost.to_bytes());
+    sb.git(&other, &["add", "."]);
+    sb.git(&other, &["commit", "-q", "--no-verify", "-m", "add c and a ghost without hooks"]);
+    let output = sb.fails("git", &other, &["push", "-q", "--force", "origin", "main"]);
+    assert!(output.contains("data/ghost.bin"), "the hook still walks the pushed commits: {output}");
+    assert!(!output.contains("bad object"), "the hook does not choke on the unknown tip: {output}");
+    assert_eq!(sb.git(&sb.origin, &["rev-parse", "refs/heads/main"]).trim(), origin_tip, "the push was refused");
+    assert!(sb.remote_has(&c_pointer), "the hook uploaded what the hookless commit left before refusing");
+
+    sb.git(&other, &["reset", "-q", "--hard", "HEAD~1"]);
+    sb.write(&other, "data/c.bin", &c);
+    sb.git(&other, &["add", "data/c.bin"]);
+    sb.git(&other, &["commit", "-q", "--no-verify", "-m", "add c without hooks"]);
+    sb.git(&other, &["push", "-q", "--force", "origin", "main"]);
+    assert_eq!(sb.head(&other), sb.git(&sb.origin, &["rev-parse", "refs/heads/main"]).trim());
+}
+
+#[test]
 fn switching_branches_dehydrates_only_what_changed() {
     let sb = Sandbox::new();
     let a1 = content(5, 1 << 20);

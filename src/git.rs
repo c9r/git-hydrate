@@ -378,6 +378,13 @@ impl Repo {
         }
     }
 
+    /// Whether this repository holds `sha` as a commit. A full object id passes
+    /// `rev-parse --verify` on its syntax alone, so the check peels it, which
+    /// fails when the object is absent.
+    pub fn has_commit(&self, sha: &str) -> Result<bool> {
+        Ok(self.resolve(&format!("{sha}^{{commit}}"))?.is_some())
+    }
+
     /// Lists a tree recursively, with paths relative to the top level.
     pub fn ls_tree(&self, tree: &str) -> Result<Vec<TreeEntry>> {
         let output = self.output(&["ls-tree", "-r", "-z", "--full-tree", tree])?;

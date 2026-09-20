@@ -5,6 +5,15 @@
 //! object the remote lacks from the working tree, which only a commit made
 //! without the pre-commit hook leaves behind. It aborts the push naming any
 //! object it can find nowhere.
+//!
+//! The commits the remote does not have are those reachable from the pushed
+//! commit and not from the remote's current tip. Git allows that tip to be an
+//! object this repository does not hold, after a history rewrite has pruned
+//! it or when the remote moved since the last fetch, and for a new branch
+//! there is no tip at all. In both cases the walk stops at the remote's
+//! tracking refs instead, which is what this repository last saw of the
+//! remote, so the hook checks more objects than it strictly needs to rather
+//! than failing.
 
 use std::collections::{HashMap, HashSet};
 use std::io::Read;
@@ -36,8 +45,11 @@ pub async fn run(repo: &Repo, remote_name: &str, quiet: bool) -> Result<()> {
         }
         let not_remote = format!("--remotes={remote_name}");
         let exclude = format!("^{remote_sha}");
-        let args: Vec<&str> =
-            if is_zero(remote_sha) { vec![local_sha, "--not", &not_remote] } else { vec![local_sha, &exclude] };
+        let args: Vec<&str> = if is_zero(remote_sha) || !repo.has_commit(remote_sha)? {
+            vec![local_sha, "--not", &not_remote]
+        } else {
+            vec![local_sha, &exclude]
+        };
         for (object, path) in repo.list_objects(&args)? {
             objects.entry(object).or_insert(path);
         }

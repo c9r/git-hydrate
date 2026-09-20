@@ -1,6 +1,6 @@
 [package]
 name = "git-hydrate"
-version = "0.1.1"
+version = "0.1.2"
 edition = "2024"
 description = "Large files in an object store, pointers in git, one copy on disk"
 license = "MIT"
