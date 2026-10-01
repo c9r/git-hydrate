@@ -21,12 +21,14 @@ jobs:
         with:
           components: rustfmt, clippy
       - uses: Swatinem/rust-cache@v2
+      # Chainguard builds MinIO from source and serves the image without
+      # credentials, which MinIO's own registries do not.
       - name: Start MinIO
         if: runner.os == 'Linux'
         run: |
           docker run -d --name minio -p 9000:9000 \
             -e MINIO_ROOT_USER=hydrate -e MINIO_ROOT_PASSWORD=hydrate-secret \
-            quay.io/minio/minio server /data
+            cgr.dev/chainguard/minio server /data
           for i in $(seq 1 60); do
             if curl -sf -o /dev/null http://127.0.0.1:9000/minio/health/live; then break; fi
             sleep 1
