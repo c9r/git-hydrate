@@ -27,9 +27,9 @@ pub async fn run(repo: &Repo, cwd: &Path, options: Options) -> Result<()> {
     for file in &files {
         states.push(tracked::work_state(&repo.toplevel, file)?);
     }
-    let hydrated: Vec<String> =
-        files.iter().zip(&states).filter(|(_, s)| **s == WorkState::Hydrated).map(|(f, _)| f.path.clone()).collect();
-    let modified: HashSet<String> = repo.modified_paths(&hydrated)?.into_iter().collect();
+    let hydrated: Vec<&tracked::Tracked> =
+        files.iter().zip(&states).filter(|(_, s)| **s == WorkState::Hydrated).map(|(f, _)| f).collect();
+    let modified: HashSet<String> = tracked::modified_files(repo, &hydrated)?;
 
     let present: Option<HashMap<String, Option<u64>>> = if options.check_remote {
         match config::resolve(repo) {

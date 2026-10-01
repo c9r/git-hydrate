@@ -325,14 +325,17 @@ impl Repo {
         Ok(())
     }
 
-    /// The paths, among those given, whose working tree file differs from the index.
+    /// The paths, among those given, that git suspects of differing from the index.
     ///
-    /// Git answers from its stat cache and runs the clean filter only where
-    /// the stat changed, so this is cheap for files it has seen before.
+    /// Git answers from its stat cache. A file whose size differs from the
+    /// stat the index recorded is suspect without its content being read,
+    /// so a hydrated file whose entry still carries the pointer's stat is
+    /// always among them. `tracked::modified_files` settles the suspects by
+    /// content. The paths are literal, so none is a pattern.
     pub fn modified_paths(&self, paths: &[String]) -> Result<Vec<String>> {
         let mut modified = Vec::new();
         for batch in paths.chunks(500) {
-            let mut args: Vec<&str> = vec!["diff-files", "-z", "--name-only", "--"];
+            let mut args: Vec<&str> = vec!["--literal-pathspecs", "diff-files", "-z", "--name-only", "--"];
             args.extend(batch.iter().map(String::as_str));
             let output = self.output(&args)?;
             for record in output.split(|b| *b == 0).filter(|r| !r.is_empty()) {
@@ -353,10 +356,21 @@ impl Repo {
             .collect()
     }
 
-    /// Makes git re-examine the given paths and record their current stat.
+    /// Records the current stat of files that clean to the pointer the index
+    /// already holds, the object itself or the pointer written back, so git
+    /// reads none of them again.
+    ///
+    /// Git judges a file by its size before its content, so a hydrated file
+    /// whose index entry still carries the pointer's stat reads as modified
+    /// however many times status runs, and no refresh changes that. The one
+    /// way to record the file's stat is to stage the path, which runs the
+    /// clean filter and writes the pointer git already holds beside the new
+    /// stat, as git-lfs does after a checkout. It is right only for a file
+    /// that cleans to that pointer, which every caller has established,
+    /// because any other file would have its change staged.
     pub fn refresh_index(&self, paths: &[String]) -> Result<()> {
         for batch in paths.chunks(500) {
-            let mut args: Vec<&str> = vec!["update-index", "-q", "--refresh", "--"];
+            let mut args: Vec<&str> = vec!["--literal-pathspecs", "update-index", "--"];
             args.extend(batch.iter().map(String::as_str));
             self.output(&args)?;
         }

@@ -4,11 +4,13 @@
 //! the index holds a pointer for it. Both conditions come from git, so what
 //! the tool acts on is exactly what git filters.
 
+use std::collections::HashSet;
 use std::path::Path;
 
-use anyhow::Result;
+use anyhow::{Context, Result};
 
 use crate::git::Repo;
+use crate::hash;
 use crate::pointer::{MAX_LEN, Pointer};
 
 /// The attribute value that marks a path as tracked.
@@ -90,9 +92,41 @@ pub fn work_state(toplevel: &Path, tracked: &Tracked) -> std::io::Result<WorkSta
     })
 }
 
+/// The hydrated files, among those given, whose content is not their pointer's object.
+///
+/// Git names the suspects from its stat cache, and it judges a file by size
+/// before content, so a file placed by another process, copied into place,
+/// or hydrated on another machine is suspect for as long as its index entry
+/// carries the pointer's stat. A suspect whose size is the pointer's is read
+/// and hashed, and one whose hash is the pointer's oid is recorded in the
+/// index with its stat, so git and every later call answer at once. A
+/// suspect whose size or hash differs is modified. Every file given is
+/// hydrated, which the caller has established.
+pub fn modified_files(repo: &Repo, files: &[&Tracked]) -> Result<HashSet<String>> {
+    let paths: Vec<String> = files.iter().map(|f| f.path.clone()).collect();
+    let suspects: HashSet<String> = repo.modified_paths(&paths)?.into_iter().collect();
+    let mut modified = HashSet::new();
+    let mut proven = Vec::new();
+    for file in files.iter().filter(|f| suspects.contains(&f.path)) {
+        let path = repo.toplevel.join(&file.path);
+        let meta = std::fs::symlink_metadata(&path).with_context(|| format!("reading {}", path.display()))?;
+        let proven_clean = meta.is_file()
+            && meta.len() == file.pointer.size
+            && hash::hash_file(&path).with_context(|| format!("hashing {}", path.display()))?.0 == file.pointer.oid;
+        if proven_clean {
+            proven.push(file.path.clone());
+        } else {
+            modified.insert(file.path.clone());
+        }
+    }
+    if !proven.is_empty() {
+        repo.refresh_index(&proven)?;
+    }
+    Ok(modified)
+}
+
 /// Writes a pointer file at a path, atomically, with the executable bit git expects.
 pub fn write_pointer(path: &Path, pointer: &Pointer, executable: bool) -> Result<()> {
-    use anyhow::Context;
     let dir = path.parent().context("the path has no parent directory")?;
     std::fs::create_dir_all(dir).with_context(|| format!("creating {}", dir.display()))?;
     let mut temp = tempfile::Builder::new()
@@ -107,7 +141,6 @@ pub fn write_pointer(path: &Path, pointer: &Pointer, executable: bool) -> Result
 
 #[cfg(unix)]
 pub fn set_executable(path: &Path, executable: bool) -> Result<()> {
-    use anyhow::Context;
     use std::os::unix::fs::PermissionsExt;
     let mode = if executable { 0o755 } else { 0o644 };
     std::fs::set_permissions(path, std::fs::Permissions::from_mode(mode))

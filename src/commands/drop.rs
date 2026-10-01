@@ -53,8 +53,7 @@ pub async fn run(repo: &Repo, cwd: &Path, options: Options) -> Result<()> {
         return Ok(());
     }
 
-    let modified: HashSet<String> =
-        repo.modified_paths(&candidates.iter().map(|f| f.path.clone()).collect::<Vec<_>>())?.into_iter().collect();
+    let modified: HashSet<String> = tracked::modified_files(repo, &candidates.iter().collect::<Vec<_>>())?;
     let (clean, dirty): (Vec<_>, Vec<_>) = candidates.into_iter().partition(|f| !modified.contains(&f.path));
     for file in dirty {
         refused.push((file.path, "the file has changes that are not committed".to_string()));

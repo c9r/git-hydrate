@@ -132,7 +132,17 @@ pub async fn run(repo: &Repo, options: Options) -> Result<()> {
                 }
             }
             Some(pointer) => {
-                if !pointer_at(&target, pointer) {
+                // Outside the globs a file already hydrated at the pointer's
+                // size stays, because a rerun narrowed by --only must never
+                // throw away what an earlier run placed. Anything else
+                // becomes the pointer.
+                let is_pointer = pointer_at(&target, pointer);
+                let hydrated = !is_pointer
+                    && matches!(
+                        std::fs::symlink_metadata(&target),
+                        Ok(meta) if meta.is_file() && meta.len() == pointer.size
+                    );
+                if !is_pointer && !hydrated {
                     write_pointer(&target, pointer, executable)?;
                     written += 1;
                 }

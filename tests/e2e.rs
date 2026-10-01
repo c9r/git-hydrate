@@ -445,6 +445,47 @@ fn export_writes_a_hydrated_tree_and_follows_the_branch() {
     fs::write(out.join("data/b.bin"), b"corrupted").unwrap();
     sb.hydrate(&sb.work, &["export", "main", out.to_str().unwrap()]);
     assert_eq!(fs::read(out.join("data/b.bin")).unwrap(), b, "a rerun repairs a file of the wrong size");
+
+    sb.hydrate(&sb.work, &["export", "main", out.to_str().unwrap(), "--only", "data/a.bin"]);
+    assert_eq!(fs::read(out.join("data/b.bin")).unwrap(), b, "a narrower rerun keeps what an earlier run hydrated");
+    assert_eq!(fs::read(out.join("data/a.bin")).unwrap(), a2);
+}
+
+#[test]
+fn status_and_dehydrate_judge_a_file_by_its_content_not_the_stat_cache() {
+    let sb = Sandbox::new();
+    let bytes = content(11, 1 << 20);
+    sb.write(&sb.work, "data/a.bin", &bytes);
+    sb.git(&sb.work, &["add", "."]);
+    sb.git(&sb.work, &["commit", "-q", "-m", "add a"]);
+    sb.git(&sb.work, &["push", "-q"]);
+    let pointer = pointer_for(&bytes);
+
+    // A clone holds the pointer. The bytes arrive by a plain copy, which
+    // git has not seen, so the index's stat for the path is the pointer's.
+    let clone = sb.clone("copied");
+    assert_eq!(Pointer::parse(&sb.read(&clone, "data/a.bin")), Some(pointer.clone()));
+    sb.write(&clone, "data/a.bin", &bytes);
+
+    assert_eq!(sb.status(&clone), " M data/a.bin\n", "git judges the copy by its size alone");
+    let status = sb.hydrate(&clone, &["status", "--no-remote", "--porcelain", "data/a.bin"]);
+    assert!(status.starts_with("hydrated\t"), "a copied file is hydrated, not modified: {status}");
+    assert_eq!(sb.git(&clone, &["diff", "--cached", "--name-only"]), "", "nothing new was staged by looking");
+    assert_eq!(sb.status(&clone), "", "and git now records the copy's stat");
+
+    sb.run(DEHYDRATE, &clone, &["data/a.bin"]);
+    assert_eq!(Pointer::parse(&sb.read(&clone, "data/a.bin")), Some(pointer));
+    assert_eq!(sb.status(&clone), "");
+
+    // A file that really changed still reads as modified, and looking at it
+    // stages nothing.
+    sb.hydrate(&clone, &["pull", "data/a.bin"]);
+    sb.write(&clone, "data/a.bin", &content(12, 1 << 20));
+    let status = sb.hydrate(&clone, &["status", "--no-remote", "--porcelain", "data/a.bin"]);
+    assert!(status.starts_with("modified\t"), "{status}");
+    assert_eq!(sb.git(&clone, &["diff", "--cached", "--name-only"]), "");
+    let output = sb.fails(DEHYDRATE, &clone, &["data/a.bin"]);
+    assert!(output.contains("not committed"), "{output}");
 }
 
 #[test]

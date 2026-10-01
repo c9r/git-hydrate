@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.3 (2026-10-01)
+
+- `git hydrate status` and `git dehydrate` judge a hydrated file by its content where git only suspects it. A file copied or linked into place, or hydrated on another machine, read as modified and could not be dehydrated, because git judges a file by its size before its content and the index still held the pointer's stat. Such a file is now hashed, and one that is its object is recorded in the index with its stat, so git reads it as clean from then on.
+- A rerun of `git hydrate export` narrowed by `--only` keeps the files an earlier run hydrated outside the globs instead of replacing them with pointers.
+- The paths these verbs hand to git are literal, so a tracked path that contains glob characters names itself and nothing else.
+
 ## 0.1.2 (2026-09-19)
 
 - The pre-push hook no longer fails when the remote's current tip is an object the repository does not hold, as after a history rewrite has pruned it or on a force push to a remote that moved since the last fetch. It walks from the remote's tracking refs instead, as it already did for a new branch, and checks more objects than it strictly needs to rather than refusing the push with a bad-object error.
